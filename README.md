@@ -16,6 +16,7 @@ A Ruby-based tool suite for analyzing video files stored in Apple Photos' SQLite
 - `video_analyzer.rb` - Basic video analyzer (top 100 videos by duration)
 - `video_analyzer_enhanced.rb` - Advanced analyzer with filtering and export options
 - `explore_schema.rb` - Database schema explorer for understanding the database structure
+- `video_locator.rb` - Helper tool to locate videos in Photos app using analyzer results
 
 ## Requirements
 
@@ -105,6 +106,9 @@ ruby video_analyzer_enhanced.rb --date-from 2023-01-01 --date-to 2023-12-31 Phot
 
 # Find .mov files sorted by date
 ruby video_analyzer_enhanced.rb --search "mov" --sort-by date Photos.sqlite
+
+# Find videos and get location instructions
+ruby video_locator.rb --interactive Photos.sqlite
 ```
 
 ### Export Examples
@@ -115,6 +119,53 @@ ruby video_analyzer_enhanced.rb -n 50 --format csv -o my_videos.csv Photos.sqlit
 # Export all 4K videos to JSON
 ruby video_analyzer_enhanced.rb -n 0 --resolution 4k --format json Photos.sqlite
 ```
+
+## Finding Videos in Photos App
+
+The analyzer shows internal filenames like `E7CAFE34-EA72-4486-952A-809EDEE2AEC4.mov` which can't be searched directly in Photos app. Here's how to locate these videos:
+
+### Method 1: Use the Video Locator Tool
+
+```bash
+# Interactive mode - browse and select videos for search instructions
+ruby video_locator.rb --interactive Photos.sqlite
+
+# Get instructions for a specific video by Asset ID
+ruby video_locator.rb --id 8014 Photos.sqlite
+
+# Export a complete search guide
+ruby video_locator.rb --export-guide Photos.sqlite
+```
+
+### Method 2: Manual Search in Photos App
+
+Use the **date created** and **duration** from the analyzer results:
+
+1. **Filter by Date**:
+   - Open Photos app → Library → All Photos
+   - Navigate to the date shown in results (e.g., "2019-02-26")
+   - Look for videos on that specific day
+
+2. **Match Duration**:
+   - Select videos and check duration in bottom-left corner
+   - Match with the duration from analyzer (e.g., "2:57:21")
+
+3. **Verify Resolution**:
+   - Right-click video → Get Info
+   - Check dimensions match (e.g., "1920x1080")
+
+4. **Check Special Flags**:
+   - ⭐ Look in Favorites album if flagged as favorite
+   - 👁 Check Hidden album if marked as hidden
+
+### Method 3: Smart Albums
+
+1. Create a Smart Album: Albums → New Smart Album
+2. Set conditions:
+   - Media Type is Video
+   - Duration is greater than X minutes
+   - Date is in range
+3. Browse results to find matching videos
 
 ## Output Information
 
