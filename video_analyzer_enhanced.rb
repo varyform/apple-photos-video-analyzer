@@ -19,6 +19,7 @@ class EnhancedPhotosVideoAnalyzer
     @search_term = options[:search_term]
     @sort_by = options[:sort_by] || 'duration'
     @show_stats = options[:show_stats]
+    @group_by = options[:group_by]
     @db = nil
   end
 
@@ -108,6 +109,34 @@ class EnhancedPhotosVideoAnalyzer
     limit_clause = "LIMIT #{@limit}" if @limit > 0
 
     [select_clause, where_clause, order_clause, limit_clause].compact.join(' ')
+  end
+
+  def group_results_by_date(results)
+    return results unless @group_by
+
+    grouped = results.group_by do |row|
+      timestamp = row['ZDATECREATED']
+      next 'Unknown' unless timestamp
+
+      reference_date = Time.new(2001, 1, 1, 0, 0, 0, "+00:00")
+      actual_date = reference_date + timestamp
+
+      case @group_by.downcase
+      when 'day'
+        actual_date.strftime("%Y-%m-%d")
+      when 'month'
+        actual_date.strftime("%Y-%m")
+      when 'year'
+        actual_date.strftime("%Y")
+      else
+        actual_date.strftime("%Y-%m-%d")
+      end
+    rescue => e
+      'Unknown'
+    end
+
+    # Sort groups by date (newest first)
+    grouped.sort_by { |date, _| date == 'Unknown' ? '0000' : date }.reverse.to_h
   end
 
   def get_videos
@@ -234,30 +263,88 @@ class EnhancedPhotosVideoAnalyzer
 
     CSV.open(filename, 'w') do |csv|
       # Headers
-      csv << ['Rank', 'Duration (seconds)', 'Duration (formatted)', 'Filename', 'Date Created',
-              'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
-              'Favorite', 'Hidden', 'Trashed']
+      if @group_by
+        csv << ['Group', 'Rank', 'Duration (seconds)', 'Duration (formatted)', 'Filename', 'Date Created',
+                'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
+                'Favorite', 'Hidden', 'Trashed']
+      else
+        csv << ['Rank', 'Duration (seconds)', 'Duration (formatted)', 'Filename', 'Date Created',
+                'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
+                'Favorite', 'Hidden', 'Trashed']
+      end
 
-      results.each_with_index do |row, index|
-        duration = row['ZDURATION']
-        estimated_size = estimate_file_size_mb(duration, row['ZWIDTH'], row['ZHEIGHT'])
-        resolution_cat = get_resolution_category(row['ZWIDTH'], row['ZHEIGHT'])
+      if @group_by
+        grouped_results = group_results_by_date(results)
+        grouped_results.each do |group_name, group_results|
+          group_duration = 0
+          group_size = 0
 
-        csv << [
-          index + 1,
-          duration,
-          format_duration(duration),
-          row['ZFILENAME'],
-          format_date(row['ZDATECREATED'], :csv),
-          row['ZWIDTH'],
-          row['ZHEIGHT'],
-          resolution_cat,
-          estimated_size,
-          row['asset_id'],
-          row['ZFAVORITE'] == 1 ? 'Yes' : 'No',
-          row['ZHIDDEN'] == 1 ? 'Yes' : 'No',
-          row['ZTRASHEDSTATE'] == 1 ? 'Yes' : 'No'
-        ]
+          group_results.each_with_index do |row, index|
+            duration = row['ZDURATION']
+            estimated_size = estimate_file_size_mb(duration, row['ZWIDTH'], row['ZHEIGHT'])
+            resolution_cat = get_resolution_category(row['ZWIDTH'], row['ZHEIGHT'])
+
+            csv << [
+              group_name,
+              index + 1,
+              duration,
+              format_duration(duration),
+              row['ZFILENAME'],
+              format_date(row['ZDATECREATED'], :csv),
+              row['ZWIDTH'],
+              row['ZHEIGHT'],
+              resolution_cat,
+              estimated_size,
+              row['asset_id'],
+              row['ZFAVORITE'] == 1 ? 'Yes' : 'No',
+              row['ZHIDDEN'] == 1 ? 'Yes' : 'No',
+              row['ZTRASHEDSTATE'] == 1 ? 'Yes' : 'No'
+            ]
+
+            group_duration += duration if duration
+            group_size += estimated_size if estimated_size
+          end
+
+          # Add group summary row
+          csv << [
+            "#{group_name} TOTAL",
+            group_results.length,
+            group_duration,
+            format_duration(group_duration),
+            "GROUP SUMMARY",
+            "",
+            "",
+            "",
+            "",
+            group_size.round(1),
+            "",
+            "",
+            "",
+            ""
+          ]
+        end
+      else
+        results.each_with_index do |row, index|
+          duration = row['ZDURATION']
+          estimated_size = estimate_file_size_mb(duration, row['ZWIDTH'], row['ZHEIGHT'])
+          resolution_cat = get_resolution_category(row['ZWIDTH'], row['ZHEIGHT'])
+
+          csv << [
+            index + 1,
+            duration,
+            format_duration(duration),
+            row['ZFILENAME'],
+            format_date(row['ZDATECREATED'], :csv),
+            row['ZWIDTH'],
+            row['ZHEIGHT'],
+            resolution_cat,
+            estimated_size,
+            row['asset_id'],
+            row['ZFAVORITE'] == 1 ? 'Yes' : 'No',
+            row['ZHIDDEN'] == 1 ? 'Yes' : 'No',
+            row['ZTRASHEDSTATE'] == 1 ? 'Yes' : 'No'
+          ]
+        end
       end
     end
 
@@ -268,22 +355,66 @@ class EnhancedPhotosVideoAnalyzer
     require 'json'
     filename ||= @output_file || "videos_#{Time.now.strftime('%Y%m%d_%H%M%S')}.json"
 
-    formatted_results = results.map.with_index do |row, index|
-      {
-        rank: index + 1,
-        duration_seconds: row['ZDURATION'],
-        duration_formatted: format_duration(row['ZDURATION']),
-        filename: row['ZFILENAME'],
-        date_created: format_date(row['ZDATECREATED'], :csv),
-        width: row['ZWIDTH'],
-        height: row['ZHEIGHT'],
-        resolution_category: get_resolution_category(row['ZWIDTH'], row['ZHEIGHT']),
-        estimated_size_mb: estimate_file_size_mb(row['ZDURATION'], row['ZWIDTH'], row['ZHEIGHT']),
-        asset_id: row['asset_id'],
-        favorite: row['ZFAVORITE'] == 1,
-        hidden: row['ZHIDDEN'] == 1,
-        trashed: row['ZTRASHEDSTATE'] == 1
-      }
+    if @group_by
+      grouped_results = group_results_by_date(results)
+      formatted_results = {}
+
+      grouped_results.each do |group_name, group_results|
+        group_duration = 0
+        group_size = 0
+
+        videos = group_results.map.with_index do |row, index|
+          duration = row['ZDURATION']
+          estimated_size = estimate_file_size_mb(duration, row['ZWIDTH'], row['ZHEIGHT'])
+
+          group_duration += duration if duration
+          group_size += estimated_size if estimated_size
+
+          {
+            rank: index + 1,
+            duration_seconds: duration,
+            duration_formatted: format_duration(duration),
+            filename: row['ZFILENAME'],
+            date_created: format_date(row['ZDATECREATED'], :csv),
+            width: row['ZWIDTH'],
+            height: row['ZHEIGHT'],
+            resolution_category: get_resolution_category(row['ZWIDTH'], row['ZHEIGHT']),
+            estimated_size_mb: estimated_size,
+            asset_id: row['asset_id'],
+            favorite: row['ZFAVORITE'] == 1,
+            hidden: row['ZHIDDEN'] == 1,
+            trashed: row['ZTRASHEDSTATE'] == 1
+          }
+        end
+
+        formatted_results[group_name] = {
+          summary: {
+            total_videos: group_results.length,
+            total_duration_seconds: group_duration,
+            total_duration_formatted: format_duration(group_duration),
+            total_estimated_size_mb: group_size.round(1)
+          },
+          videos: videos
+        }
+      end
+    else
+      formatted_results = results.map.with_index do |row, index|
+        {
+          rank: index + 1,
+          duration_seconds: row['ZDURATION'],
+          duration_formatted: format_duration(row['ZDURATION']),
+          filename: row['ZFILENAME'],
+          date_created: format_date(row['ZDATECREATED'], :csv),
+          width: row['ZWIDTH'],
+          height: row['ZHEIGHT'],
+          resolution_category: get_resolution_category(row['ZWIDTH'], row['ZHEIGHT']),
+          estimated_size_mb: estimate_file_size_mb(row['ZDURATION'], row['ZWIDTH'], row['ZHEIGHT']),
+          asset_id: row['asset_id'],
+          favorite: row['ZFAVORITE'] == 1,
+          hidden: row['ZHIDDEN'] == 1,
+          trashed: row['ZTRASHEDSTATE'] == 1
+        }
+      end
     end
 
     File.write(filename, JSON.pretty_generate(formatted_results))
@@ -293,6 +424,73 @@ class EnhancedPhotosVideoAnalyzer
   def display_table_results(results)
     return if results.empty?
 
+    if @group_by
+      display_grouped_table_results(results)
+    else
+      display_ungrouped_table_results(results)
+    end
+  end
+
+  def display_grouped_table_results(results)
+    grouped_results = group_results_by_date(results)
+    total_duration = 0
+    total_videos = results.length
+
+    puts "\n" + "="*140
+    puts "TOP #{total_videos} VIDEOS GROUPED BY #{@group_by.upcase}"
+    puts "="*140
+
+    grouped_results.each do |group_name, group_results|
+      puts "\n📅 #{group_name.upcase} (#{group_results.length} videos)"
+      puts "-" * 140
+
+      printf("%-4s %-12s %-45s %-20s %-12s %-12s %-8s %s\n",
+             "Rank", "Duration", "Filename", "Date Created", "Dimensions", "Est. Size", "Flags", "ID")
+      puts "-" * 140
+
+      group_duration = 0
+      group_size = 0
+
+      group_results.each_with_index do |row, index|
+        rank = index + 1
+        duration = row['ZDURATION']
+        duration_formatted = format_duration(duration)
+        filename = row['ZFILENAME'] || "N/A"
+        date = format_date(row['ZDATECREATED'], :short)
+        dimensions = format_dimensions(row['ZWIDTH'], row['ZHEIGHT'])
+        estimated_size = estimate_file_size_mb(duration, row['ZWIDTH'], row['ZHEIGHT'])
+        estimated_size_str = estimated_size ? "~#{estimated_size} MB" : "N/A"
+        asset_id = row['asset_id']
+
+        # Flags
+        flags = []
+        flags << "⭐" if row['ZFAVORITE'] == 1
+        flags << "👁" if row['ZHIDDEN'] == 1
+        flags << "🗑" if row['ZTRASHEDSTATE'] == 1
+        flags_str = flags.join('')
+
+        display_filename = filename.length > 43 ? filename[0..40] + "..." : filename
+
+        printf("%-4d %-12s %-45s %-20s %-12s %-12s %-8s %s\n",
+               rank, duration_formatted, display_filename, date, dimensions,
+               estimated_size_str, flags_str, asset_id)
+
+        group_duration += duration if duration
+        total_duration += duration if duration
+
+        group_estimated_size = estimate_file_size_mb(duration, row['ZWIDTH'], row['ZHEIGHT'])
+        group_size += group_estimated_size if group_estimated_size
+      end
+
+      group_size_str = group_size > 0 ? "~#{group_size.round(1)} MB" : "N/A"
+      puts "    Group total: #{format_duration(group_duration)}, Size: #{group_size_str}"
+    end
+
+    puts "\n" + "="*140
+    display_summary(results, total_duration)
+  end
+
+  def display_ungrouped_table_results(results)
     puts "\n" + "="*140
     puts "TOP #{results.length} VIDEOS BY #{@sort_by.upcase}"
     puts "="*140
@@ -469,6 +667,11 @@ def parse_options
       options[:show_stats] = true
     end
 
+    opts.on("--group-by PERIOD", ["day", "month", "year"],
+            "Group results by date period (day, month, year)") do |period|
+      options[:group_by] = period
+    end
+
     opts.on("-h", "--help", "Show this help message") do
       puts opts
       exit
@@ -481,6 +684,8 @@ def parse_options
     opts.separator "  ruby video_analyzer_enhanced.rb --min-duration 300 --resolution 4k Photos.sqlite"
     opts.separator "  ruby video_analyzer_enhanced.rb --date-from 2023-01-01 --date-to 2023-12-31 Photos.sqlite"
     opts.separator "  ruby video_analyzer_enhanced.rb --search \"mov\" --sort-by date Photos.sqlite"
+    opts.separator "  ruby video_analyzer_enhanced.rb --group-by month --sort-by date Photos.sqlite"
+    opts.separator "  ruby video_analyzer_enhanced.rb --group-by day --date-from 2023-06-01 --date-to 2023-06-30 Photos.sqlite"
   end.parse!
 
   if ARGV.length != 1
