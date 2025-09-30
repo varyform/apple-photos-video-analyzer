@@ -39,55 +39,56 @@ class EnhancedPhotosVideoAnalyzer
   def build_query
     select_clause = <<-SQL
       SELECT
-        ZDURATION,
-        ZFILENAME,
-        ZDATECREATED,
-        ZWIDTH,
-        ZHEIGHT,
-        Z_PK as asset_id,
-        ZFAVORITE,
-        ZHIDDEN,
-        ZTRASHEDSTATE
-      FROM ZASSET
+        a.ZDURATION,
+        COALESCE(c.ZORIGINALFILENAME, a.ZFILENAME) as ZFILENAME,
+        a.ZDATECREATED,
+        a.ZWIDTH,
+        a.ZHEIGHT,
+        a.Z_PK as asset_id,
+        a.ZFAVORITE,
+        a.ZHIDDEN,
+        a.ZTRASHEDSTATE
+      FROM ZASSET a
+      LEFT JOIN ZCLOUDMASTER c ON a.ZMASTER = c.Z_PK
     SQL
 
-    where_conditions = ['ZKIND = 1']
+    where_conditions = ['a.ZKIND = 1']
 
     # Duration filters
-    where_conditions << 'ZDURATION > 0' unless @min_duration && @min_duration == 0
-    where_conditions << "ZDURATION >= #{@min_duration}" if @min_duration && @min_duration > 0
-    where_conditions << "ZDURATION <= #{@max_duration}" if @max_duration
+    where_conditions << 'a.ZDURATION > 0' unless @min_duration && @min_duration == 0
+    where_conditions << "a.ZDURATION >= #{@min_duration}" if @min_duration && @min_duration > 0
+    where_conditions << "a.ZDURATION <= #{@max_duration}" if @max_duration
 
     # Date filters (Apple Core Data timestamps)
     if @date_from
       timestamp = (@date_from.to_time - Time.new(2001, 1, 1, 0, 0, 0, "+00:00")).to_i
-      where_conditions << "ZDATECREATED >= #{timestamp}"
+      where_conditions << "a.ZDATECREATED >= #{timestamp}"
     end
 
     if @date_to
       timestamp = (@date_to.to_time - Time.new(2001, 1, 1, 0, 0, 0, "+00:00")).to_i
-      where_conditions << "ZDATECREATED <= #{timestamp}"
+      where_conditions << "a.ZDATECREATED <= #{timestamp}"
     end
 
     # Resolution filters
     if @resolution
       case @resolution.downcase
       when 'sd'
-        where_conditions << "(ZWIDTH * ZHEIGHT) <= 500000"
+        where_conditions << "(a.ZWIDTH * a.ZHEIGHT) <= 500000"
       when 'hd'
-        where_conditions << "(ZWIDTH * ZHEIGHT) BETWEEN 500001 AND 1500000"
+        where_conditions << "(a.ZWIDTH * a.ZHEIGHT) BETWEEN 500001 AND 1500000"
       when 'fullhd', 'fhd'
-        where_conditions << "(ZWIDTH * ZHEIGHT) BETWEEN 1500001 AND 3000000"
+        where_conditions << "(a.ZWIDTH * a.ZHEIGHT) BETWEEN 1500001 AND 3000000"
       when '4k'
-        where_conditions << "(ZWIDTH * ZHEIGHT) BETWEEN 3000001 AND 9000000"
+        where_conditions << "(a.ZWIDTH * a.ZHEIGHT) BETWEEN 3000001 AND 9000000"
       when '8k'
-        where_conditions << "(ZWIDTH * ZHEIGHT) > 9000000"
+        where_conditions << "(a.ZWIDTH * a.ZHEIGHT) > 9000000"
       end
     end
 
     # Search term filter
     if @search_term
-      where_conditions << "ZFILENAME LIKE '%#{@search_term}%'"
+      where_conditions << "COALESCE(c.ZORIGINALFILENAME, a.ZFILENAME) LIKE '%#{@search_term}%'"
     end
 
     where_clause = "WHERE #{where_conditions.join(' AND ')}"
@@ -95,15 +96,15 @@ class EnhancedPhotosVideoAnalyzer
     # Sort options
     case @sort_by.downcase
     when 'duration'
-      order_clause = "ORDER BY ZDURATION DESC"
+      order_clause = "ORDER BY a.ZDURATION DESC"
     when 'date'
-      order_clause = "ORDER BY ZDATECREATED DESC"
+      order_clause = "ORDER BY a.ZDATECREATED DESC"
     when 'size'
-      order_clause = "ORDER BY (ZWIDTH * ZHEIGHT) DESC"
+      order_clause = "ORDER BY (a.ZWIDTH * a.ZHEIGHT) DESC"
     when 'filename'
-      order_clause = "ORDER BY ZFILENAME ASC"
+      order_clause = "ORDER BY COALESCE(c.ZORIGINALFILENAME, a.ZFILENAME) ASC"
     else
-      order_clause = "ORDER BY ZDURATION DESC"
+      order_clause = "ORDER BY a.ZDURATION DESC"
     end
 
     limit_clause = "LIMIT #{@limit}" if @limit > 0
@@ -264,11 +265,11 @@ class EnhancedPhotosVideoAnalyzer
     CSV.open(filename, 'w') do |csv|
       # Headers
       if @group_by
-        csv << ['Group', 'Rank', 'Duration (seconds)', 'Duration (formatted)', 'Filename', 'Date Created',
+        csv << ['Group', 'Rank', 'Duration (seconds)', 'Duration (formatted)', 'Original Filename', 'Date Created',
                 'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
                 'Favorite', 'Hidden', 'Trashed']
       else
-        csv << ['Rank', 'Duration (seconds)', 'Duration (formatted)', 'Filename', 'Date Created',
+        csv << ['Rank', 'Duration (seconds)', 'Duration (formatted)', 'Original Filename', 'Date Created',
                 'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
                 'Favorite', 'Hidden', 'Trashed']
       end
@@ -496,7 +497,7 @@ class EnhancedPhotosVideoAnalyzer
     puts "="*140
 
     printf("%-4s %-12s %-45s %-20s %-12s %-12s %-8s %s\n",
-           "Rank", "Duration", "Filename", "Date Created", "Dimensions", "Est. Size", "Flags", "ID")
+           "Rank", "Duration", "Original Filename", "Date Created", "Dimensions", "Est. Size", "Flags", "ID")
     puts "-" * 140
 
     total_duration = 0

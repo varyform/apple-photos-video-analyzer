@@ -54,18 +54,19 @@ class PhotosVideoLocator
   def get_video_details(asset_id)
     query = <<-SQL
       SELECT
-        ZDURATION,
-        ZFILENAME,
-        ZDATECREATED,
-        ZWIDTH,
-        ZHEIGHT,
-        Z_PK as asset_id,
-        ZFAVORITE,
-        ZHIDDEN,
-        ZTRASHEDSTATE,
-        ZADJUSTMENTSSTATE
-      FROM ZASSET
-      WHERE Z_PK = ? AND ZKIND = 1
+        a.ZDURATION,
+        COALESCE(c.ZORIGINALFILENAME, a.ZFILENAME) as ZFILENAME,
+        a.ZDATECREATED,
+        a.ZWIDTH,
+        a.ZHEIGHT,
+        a.Z_PK as asset_id,
+        a.ZFAVORITE,
+        a.ZHIDDEN,
+        a.ZTRASHEDSTATE,
+        a.ZADJUSTMENTSSTATE
+      FROM ZASSET a
+      LEFT JOIN ZCLOUDMASTER c ON a.ZMASTER = c.Z_PK
+      WHERE a.Z_PK = ? AND a.ZKIND = 1
     SQL
 
     results = @db.execute(query, [asset_id])
@@ -75,18 +76,19 @@ class PhotosVideoLocator
   def get_top_videos(limit = 20)
     query = <<-SQL
       SELECT
-        ZDURATION,
-        ZFILENAME,
-        ZDATECREATED,
-        ZWIDTH,
-        ZHEIGHT,
-        Z_PK as asset_id,
-        ZFAVORITE,
-        ZHIDDEN,
-        ZTRASHEDSTATE
-      FROM ZASSET
-      WHERE ZKIND = 1 AND ZDURATION > 0
-      ORDER BY ZDURATION DESC
+        a.ZDURATION,
+        COALESCE(c.ZORIGINALFILENAME, a.ZFILENAME) as ZFILENAME,
+        a.ZDATECREATED,
+        a.ZWIDTH,
+        a.ZHEIGHT,
+        a.Z_PK as asset_id,
+        a.ZFAVORITE,
+        a.ZHIDDEN,
+        a.ZTRASHEDSTATE
+      FROM ZASSET a
+      LEFT JOIN ZCLOUDMASTER c ON a.ZMASTER = c.Z_PK
+      WHERE a.ZKIND = 1 AND a.ZDURATION > 0
+      ORDER BY a.ZDURATION DESC
       LIMIT ?
     SQL
 
@@ -101,7 +103,7 @@ class PhotosVideoLocator
     puts "\n" + "="*80
     puts "HOW TO FIND THIS VIDEO IN PHOTOS APP"
     puts "="*80
-    puts "Internal Filename: #{video['ZFILENAME']}"
+    puts "Original Filename: #{video['ZFILENAME']}"
     puts "Asset ID: #{video['asset_id']}"
     puts ""
 
@@ -213,7 +215,7 @@ class PhotosVideoLocator
 
         file.puts "VIDEO ##{index + 1}"
         file.puts "Internal ID: #{video['asset_id']}"
-        file.puts "Filename: #{video['ZFILENAME']}"
+        file.puts "Original Filename: #{video['ZFILENAME']}"
         file.puts "Duration: #{duration}"
         file.puts "Date Created: #{date ? date.strftime('%A, %B %d, %Y at %I:%M %p') : 'N/A'}"
         file.puts "Dimensions: #{dimensions}"
@@ -319,8 +321,7 @@ def parse_options
       puts "  ruby video_locator.rb --export-guide Photos.sqlite"
       puts ""
       puts "Why use this tool?"
-      puts "The video analyzer shows internal filenames like 'E7CAFE34-EA72-4486-952A-809EDEE2AEC4.mov'"
-      puts "which can't be searched in Photos app. This tool helps you locate those videos"
+      puts "This tool helps you locate videos from the analyzer results in the Photos app"
       puts "using searchable attributes like date, duration, and dimensions."
       exit
     end

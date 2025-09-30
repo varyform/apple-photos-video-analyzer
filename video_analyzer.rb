@@ -27,16 +27,17 @@ class PhotosVideoAnalyzer
 
     query = <<-SQL
       SELECT
-        ZDURATION,
-        ZFILENAME,
-        ZDATECREATED,
-        ZWIDTH,
-        ZHEIGHT,
-        Z_PK as asset_id
-      FROM ZASSET
-      WHERE ZKIND = 1
-        AND ZDURATION > 0
-      ORDER BY ZDURATION DESC
+        a.ZDURATION,
+        COALESCE(c.ZORIGINALFILENAME, a.ZFILENAME) as ZFILENAME,
+        a.ZDATECREATED,
+        a.ZWIDTH,
+        a.ZHEIGHT,
+        a.Z_PK as asset_id
+      FROM ZASSET a
+      LEFT JOIN ZCLOUDMASTER c ON a.ZMASTER = c.Z_PK
+      WHERE a.ZKIND = 1
+        AND a.ZDURATION > 0
+      ORDER BY a.ZDURATION DESC
       LIMIT #{limit}
     SQL
 
@@ -143,7 +144,7 @@ class PhotosVideoAnalyzer
 
     # Header
     printf("%-4s %-12s %-45s %-20s %-12s %-12s %s\n",
-           "Rank", "Duration", "Filename", "Date Created", "Dimensions", "Est. Size", "ID")
+           "Rank", "Duration", "Original Filename", "Date Created", "Dimensions", "Est. Size", "ID")
     puts "-" * 120
 
     total_duration = 0
