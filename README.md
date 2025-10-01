@@ -15,7 +15,6 @@ A Ruby-based tool suite for analyzing video files stored in Apple Photos' SQLite
 
 - `video_analyzer.rb` - Basic video analyzer (top 100 videos by duration)
 - `video_analyzer_enhanced.rb` - Advanced analyzer with filtering and export options
-- `video_locator.rb` - Helper tool to locate videos in Photos app using analyzer results
 
 ## Requirements
 
@@ -105,9 +104,6 @@ ruby video_analyzer_enhanced.rb --date-from 2023-01-01 --date-to 2023-12-31 Phot
 
 # Find .mov files sorted by date
 ruby video_analyzer_enhanced.rb --search "mov" --sort-by date Photos.sqlite
-
-# Find videos and get location instructions
-ruby video_locator.rb --interactive Photos.sqlite
 ```
 
 ### Export Examples
@@ -118,53 +114,6 @@ ruby video_analyzer_enhanced.rb -n 50 --format csv -o my_videos.csv Photos.sqlit
 # Export all 4K videos to JSON
 ruby video_analyzer_enhanced.rb -n 0 --resolution 4k --format json Photos.sqlite
 ```
-
-## Finding Videos in Photos App
-
-The analyzer shows internal filenames like `E7CAFE34-EA72-4486-952A-809EDEE2AEC4.mov` which can't be searched directly in Photos app. Here's how to locate these videos:
-
-### Method 1: Use the Video Locator Tool
-
-```bash
-# Interactive mode - browse and select videos for search instructions
-ruby video_locator.rb --interactive Photos.sqlite
-
-# Get instructions for a specific video by Asset ID
-ruby video_locator.rb --id 8014 Photos.sqlite
-
-# Export a complete search guide
-ruby video_locator.rb --export-guide Photos.sqlite
-```
-
-### Method 2: Manual Search in Photos App
-
-Use the **date created** and **duration** from the analyzer results:
-
-1. **Filter by Date**:
-   - Open Photos app → Library → All Photos
-   - Navigate to the date shown in results (e.g., "2019-02-26")
-   - Look for videos on that specific day
-
-2. **Match Duration**:
-   - Select videos and check duration in bottom-left corner
-   - Match with the duration from analyzer (e.g., "2:57:21")
-
-3. **Verify Resolution**:
-   - Right-click video → Get Info
-   - Check dimensions match (e.g., "1920x1080")
-
-4. **Check Special Flags**:
-   - ⭐ Look in Favorites album if flagged as favorite
-   - 👁 Check Hidden album if marked as hidden
-
-### Method 3: Smart Albums
-
-1. Create a Smart Album: Albums → New Smart Album
-2. Set conditions:
-   - Media Type is Video
-   - Duration is greater than X minutes
-   - Date is in range
-3. Browse results to find matching videos
 
 ## Output Information
 
@@ -179,20 +128,6 @@ The analyzer provides the following information for each video:
 - **Flags**: Special indicators (⭐ favorite, 👁 hidden, 🗑 trashed)
 - **Asset ID**: Internal Photos database ID
 
-## Database Schema Explorer
-
-To understand the database structure:
-
-```bash
-ruby explore_schema.rb Photos.sqlite
-```
-
-This tool helps you:
-- View all tables in the database
-- Understand column structures
-- See sample data
-- Find video-related columns
-
 ## Sample Output
 
 ```
@@ -206,13 +141,6 @@ Rank Duration     Filename                     Date Created  Dimensions   Est. S
 4    1:27:36      portrait_video.mp4          2022-06-28    888x1920     ~3285.1 MB
 5    1:10:04      presentation.mov            2022-05-13    1920x1080    ~4204.7 MB
 ```
-
-## Technical Notes
-
-- **Date Format**: Apple Photos stores dates as seconds since 2001-01-01 00:00:00 UTC
-- **File Size Estimation**: Based on typical bitrates for different resolutions
-- **Video Detection**: Uses `ZKIND = 1` to identify video assets
-- **Performance**: Queries are optimized for large photo libraries
 
 ## Limitations
 
@@ -239,11 +167,6 @@ ls -la "~/Pictures/Photos Library.photoslibrary/database/"
 Install dependencies using Bundler:
 ```bash
 bundle install
-```
-
-Or install SQLite3 gem manually:
-```bash
-gem install sqlite3
 ```
 
 ## Contributing
