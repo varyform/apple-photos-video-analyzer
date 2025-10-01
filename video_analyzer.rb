@@ -46,10 +46,10 @@ class PhotosVideoAnalyzer
     begin
       results = @db.execute(query)
       puts "Found #{results.length} videos"
-      return results
+      results
     rescue SQLite3::Exception => e
       puts "Error executing query: #{e.message}"
-      return []
+      []
     end
   end
 
@@ -94,15 +94,15 @@ class PhotosVideoAnalyzer
     # Estimate bitrate based on resolution
     pixels = width * height
     bitrate_mbps = case
-                   when pixels >= 8000000  # 4K+
+    when pixels >= 8000000  # 4K+
                      25
-                   when pixels >= 2000000  # 1080p
+    when pixels >= 2000000  # 1080p
                      8
-                   when pixels >= 900000   # 720p
+    when pixels >= 900000   # 720p
                      5
-                   else
+    else
                      3
-                   end
+    end
 
     estimated_mb = (duration * bitrate_mbps / 8).round(1)
     "~#{estimated_mb} MB"

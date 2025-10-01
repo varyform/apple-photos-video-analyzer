@@ -52,7 +52,7 @@ class EnhancedPhotosVideoAnalyzer
       LEFT JOIN ZCLOUDMASTER c ON a.ZMASTER = c.Z_PK
     SQL
 
-    where_conditions = ['a.ZKIND = 1']
+    where_conditions = [ 'a.ZKIND = 1' ]
 
     # Duration filters
     where_conditions << 'a.ZDURATION > 0' unless @min_duration && @min_duration == 0
@@ -109,7 +109,7 @@ class EnhancedPhotosVideoAnalyzer
 
     limit_clause = "LIMIT #{@limit}" if @limit > 0
 
-    [select_clause, where_clause, order_clause, limit_clause].compact.join(' ')
+    [ select_clause, where_clause, order_clause, limit_clause ].compact.join(' ')
   end
 
   def group_results_by_date(results)
@@ -217,12 +217,12 @@ class EnhancedPhotosVideoAnalyzer
 
     pixels = width * height
     bitrate_mbps = case pixels
-                   when 0..500000 then 2
-                   when 500001..1500000 then 5
-                   when 1500001..3000000 then 8
-                   when 3000001..9000000 then 25
-                   else 50
-                   end
+    when 0..500000 then 2
+    when 500001..1500000 then 5
+    when 1500001..3000000 then 8
+    when 3000001..9000000 then 25
+    else 50
+    end
 
     (duration * bitrate_mbps / 8).round(1)
   end
@@ -265,13 +265,13 @@ class EnhancedPhotosVideoAnalyzer
     CSV.open(filename, 'w') do |csv|
       # Headers
       if @group_by
-        csv << ['Group', 'Rank', 'Duration (seconds)', 'Duration (formatted)', 'Original Filename', 'Date Created',
+        csv << [ 'Group', 'Rank', 'Duration (seconds)', 'Duration (formatted)', 'Original Filename', 'Date Created',
                 'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
-                'Favorite', 'Hidden', 'Trashed']
+                'Favorite', 'Hidden', 'Trashed' ]
       else
-        csv << ['Rank', 'Duration (seconds)', 'Duration (formatted)', 'Original Filename', 'Date Created',
+        csv << [ 'Rank', 'Duration (seconds)', 'Duration (formatted)', 'Original Filename', 'Date Created',
                 'Width', 'Height', 'Resolution Category', 'Estimated Size (MB)', 'Asset ID',
-                'Favorite', 'Hidden', 'Trashed']
+                'Favorite', 'Hidden', 'Trashed' ]
       end
 
       if @group_by
@@ -626,7 +626,7 @@ def parse_options
       options[:limit] = n
     end
 
-    opts.on("-f", "--format FORMAT", ["table", "csv", "json"], "Output format (table, csv, json)") do |f|
+    opts.on("-f", "--format FORMAT", [ "table", "csv", "json" ], "Output format (table, csv, json)") do |f|
       options[:format] = f
     end
 
@@ -650,7 +650,7 @@ def parse_options
       options[:date_to] = Date.parse(date)
     end
 
-    opts.on("-r", "--resolution RES", ["sd", "hd", "fullhd", "fhd", "4k", "8k"],
+    opts.on("-r", "--resolution RES", [ "sd", "hd", "fullhd", "fhd", "4k", "8k" ],
             "Filter by resolution (sd, hd, fullhd, 4k, 8k)") do |res|
       options[:resolution] = res
     end
@@ -659,7 +659,7 @@ def parse_options
       options[:search_term] = term
     end
 
-    opts.on("--sort-by FIELD", ["duration", "date", "size", "filename"],
+    opts.on("--sort-by FIELD", [ "duration", "date", "size", "filename" ],
             "Sort by field (duration, date, size, filename)") do |field|
       options[:sort_by] = field
     end
@@ -668,7 +668,7 @@ def parse_options
       options[:show_stats] = true
     end
 
-    opts.on("--group-by PERIOD", ["day", "month", "year"],
+    opts.on("--group-by PERIOD", [ "day", "month", "year" ],
             "Group results by date period (day, month, year)") do |period|
       options[:group_by] = period
     end

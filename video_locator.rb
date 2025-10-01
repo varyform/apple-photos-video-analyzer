@@ -69,7 +69,7 @@ class PhotosVideoLocator
       WHERE a.Z_PK = ? AND a.ZKIND = 1
     SQL
 
-    results = @db.execute(query, [asset_id])
+    results = @db.execute(query, [ asset_id ])
     results.first
   end
 
@@ -92,7 +92,7 @@ class PhotosVideoLocator
       LIMIT ?
     SQL
 
-    @db.execute(query, [limit])
+    @db.execute(query, [ limit ])
   end
 
   def create_search_instructions(video)
