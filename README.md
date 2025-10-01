@@ -29,11 +29,6 @@ A Ruby-based tool suite for analyzing video files stored in Apple Photos' SQLite
 bundle install
 ```
 
-Alternatively, install gems manually:
-```bash
-gem install sqlite3
-```
-
 ## Finding Your Photos.sqlite File
 
 The Photos.sqlite file is typically located at:
@@ -161,12 +156,6 @@ ruby video_analyzer_enhanced.rb Photos_copy.sqlite
 Make sure you have read permissions to the Photos library:
 ```bash
 ls -la "~/Pictures/Photos Library.photoslibrary/database/"
-```
-
-### Missing Dependencies
-Install dependencies using Bundler:
-```bash
-bundle install
 ```
 
 ## Contributing
