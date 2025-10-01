@@ -15,7 +15,6 @@ A Ruby-based tool suite for analyzing video files stored in Apple Photos' SQLite
 
 - `video_analyzer.rb` - Basic video analyzer (top 100 videos by duration)
 - `video_analyzer_enhanced.rb` - Advanced analyzer with filtering and export options
-- `explore_schema.rb` - Database schema explorer for understanding the database structure
 - `video_locator.rb` - Helper tool to locate videos in Photos app using analyzer results
 
 ## Requirements
