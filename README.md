@@ -7,6 +7,7 @@ A Ruby-based tool suite for analyzing video files stored in Apple Photos' SQLite
 - 📊 **Database Analysis**: Get comprehensive statistics about your photo library
 - 🎬 **Video Discovery**: Find the largest videos by duration, file size, or date
 - 🔍 **Advanced Filtering**: Filter by resolution, date range, duration, and filename
+- 📅 **Date Grouping**: Group videos by day, month, or year for better organization
 - 📤 **Multiple Export Formats**: Export results as table, CSV, or JSON
 - ⭐ **Metadata Support**: Shows favorites, hidden videos, and other metadata
 - 📱 **Apple Photos Compatible**: Works with Photos.sqlite from macOS Photos app
@@ -68,6 +69,7 @@ ruby video_analyzer_enhanced.rb [options] Photos.sqlite
 | `-r, --resolution RES` | Filter by resolution | `-r 4k` |
 | `-s, --search TERM` | Search filename | `-s "vacation"` |
 | `--sort-by FIELD` | Sort by: duration, date, size, filename | `--sort-by date` |
+| `--group-by PERIOD` | Group results by date: day, month, year | `--group-by month` |
 | `--stats-only` | Show only database statistics | `--stats-only` |
 
 #### Resolution Filters
@@ -99,6 +101,18 @@ ruby video_analyzer_enhanced.rb --date-from 2023-01-01 --date-to 2023-12-31 Phot
 
 # Find .mov files sorted by date
 ruby video_analyzer_enhanced.rb --search "mov" --sort-by date Photos.sqlite
+```
+
+### Grouping Examples
+```bash
+# Group videos by month
+ruby video_analyzer_enhanced.rb --group-by month --sort-by date Photos.sqlite
+
+# Group videos by day for June 2023
+ruby video_analyzer_enhanced.rb --group-by day --date-from 2023-06-01 --date-to 2023-06-30 Photos.sqlite
+
+# Group by year and export to CSV
+ruby video_analyzer_enhanced.rb --group-by year --format csv -o videos_by_year.csv Photos.sqlite
 ```
 
 ### Export Examples
